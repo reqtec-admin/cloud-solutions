@@ -7,5 +7,3 @@ Series of Helpful Tools and Scripts for using various clouds.
 * Python 3.10+
 * Ansible
 * Terraform
-
-
