@@ -1,0 +1,46 @@
+#cloud-config
+
+users:
+  - name: ubuntu
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD4VTzs0bX0025M0Yj7Kqx1N0VxjW2lR89m8VU8untVGxl3GyqXZWcr/KA1V8MJzfa8gWzxPmlLPq5ODWoMxWE7TGh10YIprBPrQC33/suTWcVa3TlCYdyRQiIOcB59OM47X4MI7nRvWm0C9Y8jET+siKVmqcKhZUMG0AjZF0fUUL16vN1rRWmRwQrKn4oZjc8fzN3LP/jJWQx+LqHGBItxOun3ZJIMCtTg9XQgZRX1642NuiCNU+jUsFlVBPBr9mTZr5XvSGe2q0FNvjIP1ucE5HH11PM69zWubjEQCREKr7flvhfRI7NvZMdmE/PYq7lKcjy54lEqC0HyG2G8q1jzTtrfALXXHoUHCptckO7UTY93TGlOmEK2wxX6+pqcUSY1UguQYYRQAO+yJCmejF7tQmNU6C8o0PbynDTr4bmtUJ1YEx+qMJhVez04WWUOAjlpurmpm6+Tk0SUoKtBeiIxhn5uK24On4+M8jcAb9AkvXDm8Iv7XgcXQKyGJvVhyi4wmSB/BDd7xP09K18eyzZZNw5jCVAYDK4yEaznxA65FtEcMS/osaB1HcHrVsF6/f9gLFQU/UlHSHsApEfnZ7fdSpPbRKIth+vCCgCCtuNBPgkeMxEYpJz/n3jvNXpeBA/9/aotfLcSceAAE3ScAHzLnutwXU+F1MYE7CWQQQ9Efw== reqtec-admin@protonmail.com
+
+
+packages:
+  - fail2ban
+  - ufw
+package_update: true
+package_upgrade: true
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/ssh-hardening.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      Port 2222
+      KbdInteractiveAuthentication no
+      ChallengeResponseAuthentication no
+      MaxAuthTries 2
+      AllowTcpForwarding no
+      X11Forwarding no
+      AllowAgentForwarding no
+      AuthorizedKeysFile .ssh/authorized_keys
+      AllowUsers ubuntu
+
+runcmd:
+  - systemctl enable fail2ban
+  - systemctl start fail2ban
+  - systemctl enable ufw
+  - systemctl start ufw
+  - ufw allow 2222/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw enable
+  - ufw status
+  - ufw allow 2222/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - reboot
