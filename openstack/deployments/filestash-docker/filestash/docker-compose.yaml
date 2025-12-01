@@ -1,0 +1,13 @@
+version: '2'
+services:
+  app: # kCPRIh78AM6Dnjk3FFH0UwOS2aivlnMh
+    container_name: filestash
+    image: machines/filestash:latest
+    restart: always
+    environment:
+    - APPLICATION_URL=216.39.246.166
+    ports:
+    - "80:8334"
+
+volumes:
+    filestash: {}

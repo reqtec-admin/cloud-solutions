@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: flexifyio
+  name: flexify-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flexify-ce
+  template:
+    metadata:
+      labels:
+        app: flexify-ce
+    spec:
+      containers:
+      - name: flexify-ce
+        image: flexifyio/ce
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        volumeMounts:
+        - name: flexify-data
+          mountPath: /var/opt/flexify/
+      volumes:
+      - name: flexify-data
+        persistentVolumeClaim:
+          claimName: flexify-pvc

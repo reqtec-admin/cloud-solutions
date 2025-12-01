@@ -1,0 +1,222 @@
+- name: OpenStack Environment
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    project_name: "cloud-solutions"
+    cloud_name: "<cloud from clouds.yaml>"  # Name of your cloud in clouds.yaml
+    network_name: "{{project_name}}-network"
+    subnet_name: "{{project_name}}-subnet"
+    router_name: "{{project_name}}-router"
+    network_cidr: "<private network cidr>"
+    remote_cidr: "<public network cidr>"
+    security_group_name: "{{project_name}}-security-group"
+    security_group_description: "Ansible created security group"
+    server_name: "{{project_name}}-server"
+    image_name: "<image name>"  # e.g., "Ubuntu 22.04"
+    flavor_name: "m1.medium"  # e.g., "m1.small"
+    keypair_name: "<keypair>"
+
+  tasks:
+
+    - name: Create a new network
+      openstack.cloud.network:
+        cloud: "{{ cloud_name }}"
+        state: present
+        name: "{{ network_name }}"
+        external: false
+        wait: true
+        timeout: 300
+      register: network_info
+      tags:
+        - network
+
+    - openstack.cloud.subnet:
+        cloud: "{{ cloud_name }}"
+        state: present
+        network_name: "{{ network_name }}"
+        name: "{{ subnet_name }}"
+        description: "{{ network_name }}'s subnet"
+        cidr: "{{ network_cidr }}"
+        wait: true
+        timeout: 300
+        dns_nameservers:
+          - <dns servers> # Example 8.8.8.4
+          - <dns servers> # Example 8.8.8.8
+      tags:
+        - network
+        - subnet
+
+    - name: Create Security Group (SSH, HTTP/S)
+      openstack.cloud.security_group:
+        cloud: "{{ cloud_name }}"
+        name: "{{ security_group_name }}"
+        description: "{{ security_group_name }}"
+        state: present
+        security_group_rules:
+          - ether_type: IPv4
+            remote_ip_prefix: "{{ remote_cidr }}"
+            direction: ingress
+            protocol: tcp
+            port_range_min: 22
+            port_range_max: 22
+          - ether_type: IPv4
+            remote_ip_prefix: "{{ remote_cidr }}"
+            direction: ingress
+            protocol: tcp
+            port_range_min: 80
+            port_range_max: 80
+          - ether_type: IPv4
+            remote_ip_prefix: "{{ remote_cidr }}"
+            direction: ingress
+            protocol: tcp
+            port_range_min: 443
+            port_range_max: 443
+      tags:
+        - network
+        - sg
+
+    # Create Router for public access
+
+    - name: Create a new router
+      openstack.cloud.router:
+        cloud: "{{ cloud_name }}"
+        state: present
+        name: "{{ router_name }}"
+        network: public
+        interfaces:
+        - "{{ subnet_name }}"
+      register: router_info
+      tags:
+        - network
+
+    - name: Create a new server
+      openstack.cloud.server:
+        cloud: "{{ cloud_name }}"
+        state: present
+        name: "{{ server_name }}"
+        image: "{{ image_name }}"
+        flavor: "{{ flavor_name }}"
+        key_name: "{{ keypair_name }}"
+        network: "{{ network_name }}"
+        boot_from_volume: true
+        volume_size: 20
+        auto_floating_ip: false # Create Floating IP
+        security_groups:
+          - default
+          - "{{ security_group_name }}"
+        wait: true
+        timeout: 300
+      register: server_info
+      tags:
+        - servers
+
+    - name: Create a floating IP
+      openstack.cloud.floating_ip:
+        cloud: "{{ cloud_name }}"
+        network: public
+        state: present
+        server: "{{ server_name }}"
+      register: fip
+      tags:
+        - network
+
+    - name: Save floating IP for later use
+      set_fact:
+        instance_floating_ip: "{{ fip.floating_ip.floating_ip_address }}"
+      tags:
+        - servers
+
+    - name: Display floating IP
+      debug:
+        msg: "Server accessible at: {{ instance_floating_ip }}. Copy this into your inventory file."
+      tags:
+        - servers
+
+
+###### TEARDOWN ###### 
+
+    - name: Get server info
+      openstack.cloud.server_info:
+        cloud: "{{ cloud_name }}"
+        server: "{{ server_name }}"
+      register: server_info
+      tags:
+        - never
+        - teardown
+
+    - name: Delete floating IP
+      openstack.cloud.floating_ip:
+        cloud: "{{ cloud_name }}"
+        floating_ip_address: >-
+          {{ (server_info.servers[0].addresses.values() | flatten
+              if server_info.servers else [])
+              | selectattr('OS-EXT-IPS:type', 'equalto', 'floating')
+              | map(attribute='addr') | first | default(omit) }}
+        state: absent
+        server: "{{ server_name }}"
+        network: public
+      ignore_errors: yes
+      tags:
+        - never
+        - teardown
+
+    - name: Remove the router
+      openstack.cloud.router:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        name: "{{ router_name }}"
+        wait: true
+        timeout: 300
+      register: router_info
+      tags:
+        - never
+        - teardown
+
+    - name: Remove the server
+      openstack.cloud.server:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        name: "{{ server_name }}"
+        wait: true
+        timeout: 300
+      register: server_info
+      tags:
+        - never
+        - teardown
+
+    - name: Remove the subnet
+      openstack.cloud.subnet:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        name: "{{ subnet_name }}"
+        wait: true
+        timeout: 300
+      register: server_info
+      tags:
+        - never
+        - teardown
+
+    - name: Remove the network
+      openstack.cloud.network:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        name: "{{ network_name }}"
+        wait: true
+        timeout: 300
+      register: server_info
+      tags:
+        - never
+        - teardown
+
+    - name: Remove the Security Group
+      openstack.cloud.security_group:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        name: "{{ security_group_name }}"
+        wait: true
+        timeout: 300
+      register: server_info
+      tags:
+        - never
+        - teardown

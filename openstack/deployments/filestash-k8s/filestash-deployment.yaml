@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filestash
+  namespace: filestash
+  labels:
+    app: filestash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: filestash
+  template:
+    metadata:
+      labels:
+        app: filestash
+    spec:
+      containers:
+      - name: filestash
+        image: machines/filestash:latest  # Use :0.4 if latest has issues
+        ports:
+        - containerPort: 8334
+        env:
+        - name: APPLICATION_URL
+          value: "filestash.filestash.svc.cluster.local:8334"  # Replace with your domain or ClusterIP for internal access
+      #   volumeMounts:
+      #   - name: filestash-data
+      #     mountPath: /app/data
+      # volumes:
+      # - name: filestash-data
+      #   persistentVolumeClaim:
+      #     claimName: filestash-data
