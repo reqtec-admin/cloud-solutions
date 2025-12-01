@@ -1,0 +1,3 @@
+[submodule "hetzner/n8n-example/social-flow"]
+	path = hetzner/n8n-example/social-flow
+	url = git@github.com:reqtec-admin/social-flow.git
