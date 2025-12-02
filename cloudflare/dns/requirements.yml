@@ -1,0 +1,4 @@
+# Save this as requirements.yml (not .txt!)
+collections:
+  - name: community.general
+    version: "10.7.0"   # or leave out version to get latest

@@ -1,0 +1,42 @@
+---
+- name: Update Cloudflare DNS record
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    cloudflare_zone: "reqtec.com"          # Your domain
+    cloudflare_record_name: "dev"  # Subdomain (or @ for apex)
+    cloudflare_record_type: "A"             # A, AAAA, CNAME, TXT, etc.
+    #cloudflare_value: "{{ lookup('url', 'https://ipv4.icanhazip.com', split_lines=False) | trim }}"  # Dynamic public IPv4
+    cloudflare_value: "5.78.41.66"     # Or set a static IP
+    cloudflare_proxied: false                # true = orange cloud (proxied), false = grey cloud (DNS only)
+    cloudflare_ttl: 300                     # 1 = Auto, or any value 120-2147483647
+
+    # Use API Token (recommended)
+    cloudflare_auth_token: "{{ vault_cloudflare_token | default('your-api-token-here') }}"
+
+    # Alternative: Use email + Global API Key (less secure)
+    # cloudflare_auth_email: "your-email@example.com"
+    # cloudflare_auth_key: "your-global-api-key"
+
+  tasks:
+    - name: Ensure Cloudflare DNS record is up to date
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ cloudflare_record_name | regex_replace('\\.' ~ cloudflare_zone ~ '$', '') | default('@') }}"
+        type: "{{ cloudflare_record_type }}"
+        value: "{{ cloudflare_value }}"
+        proxied: "{{ cloudflare_proxied }}"
+        ttl: "{{ cloudflare_ttl }}"
+        state: present
+        # solo: true                          # Uncomment if you want only one record of this type/name
+        account_email: "{{ cloudflare_auth_email | default(omit) }}"
+        api_token: "{{ cloudflare_auth_token | default(omit) }}"
+      register: cf_result
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: >-
+          Cloudflare DNS record {{ cloudflare_record_name }} updated to {{ cloudflare_value }}
+          (Proxied: {{ cloudflare_proxied }})
+      when: cf_result.changed
