@@ -18,3 +18,5 @@
 **/*.local.*
 **/*.local.*.*
 **/*.local.*.*.*
+
+**/.vagrant/*

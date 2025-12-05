@@ -1,0 +1,34 @@
+Vagrant.configure("2") do |config|
+    # Give a custom name for a VM created by this script for a Vagrant CLI
+    config.vm.define "devstack-vm-24.04"
+  
+    # Name for the box image downloaded from Vagrant Cloud
+    # Using Ubuntu 24.04 (Noble) - community-maintained box since Canonical discontinued official boxes
+    # Box can be added manually with: vagrant box add cloud-image/ubuntu-24.04
+    config.vm.box = "cloud-image/ubuntu-24.04"
+  
+    # Create additional network interface to make this VM available on the fixed IP address
+    # NOTE: I assume that 10.123.123.124 IP is not used in your network (different from 22.04 setup)
+    config.vm.network "private_network", ip: "10.123.123.124", nic_type: "virtio"
+  
+    config.vm.provider "virtualbox" do |v|
+      # Name visible inside your Virtualbox UI
+      v.name = "devstack-vm-24.04"
+      # Amount of memory assigned for your VM
+      v.memory = 8192 # <--- Adjust this number according to your needs
+      # Number of CPUs assigned for your VM
+      v.cpus = 4 # <--- Adjust this number according to your needs
+  
+      # Enable nested virtualization, so it will be possible to run VMs inside your VM
+      v.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
+      # Enable promiscuous mode for the network interface number "2"
+      v.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+    end
+  
+    # Enable provisioning with Ansible
+    config.vm.provision "ansible" do |ansible|
+      # Name of the file with Ansible Playbook definition
+      ansible.playbook = "install-devstack.yml"
+    end
+  end
+
